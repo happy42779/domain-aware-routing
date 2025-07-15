@@ -5,7 +5,8 @@ to manage routes
 
 import json
 import logging
-import aiofiles
+
+# import aiofiles
 import asyncio
 import ipaddress
 from typing import Dict, List, Optional, Tuple
@@ -46,11 +47,11 @@ logger = logging.getLogger(__name__)
 
 
 ######################## Metric logging function
-async def log_metric_async(line: str):
-    # write metrics to file
-    async with FILE_LOCK:
-        async with aiofiles.open(TEST_DATA_FILE, mode="a") as f:
-            await f.write(line)
+# async def log_metric_async(line: str):
+#     # write metrics to file
+#     async with FILE_LOCK:
+#         async with aiofiles.open(TEST_DATA_FILE, mode="a") as f:
+#             await f.write(line)
 
 
 @dataclass
@@ -387,7 +388,7 @@ class AsyncSDNAgent:
         """Add route endpoint"""
 
         # Timeframe receiving the request
-        T1 = time.perf_counter()
+        # T1 = time.perf_counter()
 
         try:
             data = await request.json()
@@ -409,7 +410,7 @@ class AsyncSDNAgent:
             table = data.get("table", 254)
 
             # Timeframe before calling applying rules
-            T1a = time.perf_counter()
+            # T1a = time.perf_counter()
 
             # Add route
             success, message = await self.route_manager.add_route(
@@ -417,12 +418,12 @@ class AsyncSDNAgent:
             )
 
             # Timeframe after applying rules
-            T2 = time.perf_counter()
+            # T2 = time.perf_counter()
 
             # log time
-            await log_metric_async(
-                f"{destination}, {nexthop}, {T1a - T1:.6f}, {T2 - T1a:.6f}"
-            )
+            # await log_metric_async(
+            #     f"{destination}, {nexthop}, {T1a - T1:.6f}, {T2 - T1a:.6f}"
+            # )
 
             if success:
                 response_data = {
