@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package sdn;
+
+// route management service
+service SDNAgent {
+	rpc AddRoute(AddRouteRequest) returns (AddRouteResponse);
+	rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+	// rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
+	// rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse);
+
+	// rpc BatchAddRoutes(BatchAddRoutesRequest) returns (BatchAddRoutesResponse);
+	// rpc BatchDeleteRoutes(BatchDeleteRoutesRequest) returns (BatchDeleteRouteResponse);
+}
+
+
+// messages 
+message Route {
+	string destination = 1;
+	string nexthop = 2;
+	string interface = 3;
+	int32 metric = 4;
+	int32 table = 5;
+	int64 created_at = 6;
+}
+
+message AddRouteRequest{
+	Route route = 1;
+	bool replace_existing = 2;
+}
+
+message AddRouteResponse {
+	bool success = 1;
+	string message = 2;
+	Route route = 3;	
+}
+
+message DeleteRouteRequest {
+	string destination = 1;
+	string nexthop = 2;
+	int32 table = 3;
+}
+
+message DeleteRouteResponse {
+	string success = 1;
+	string message = 2;
+}
+
