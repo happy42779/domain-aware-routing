@@ -1,0 +1,7 @@
+__pycache__/
+log/*
+!log/.gitkeep
+**/env/
+**/__pycache__/
+**/*.bak
+**/bak/
