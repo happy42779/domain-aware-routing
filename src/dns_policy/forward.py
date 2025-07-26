@@ -115,6 +115,7 @@ class DNSForwarder:
         listen_addr: str,
         listen_port: int,
         upstreams: List[str],
+        upstream_port: int = 53,
         cache_size: int = 10000,
         cache_ttl: int = 900,
         timeout: float = 3.0,
@@ -123,6 +124,7 @@ class DNSForwarder:
         self.listen_addr = listen_addr
         self.listen_port = listen_port
         self.upstreams = upstreams
+        self.upstream_port = upstream_port
         self.cache_size = cache_size
         self.cache_ttl = cache_ttl
         self.timeout = timeout
@@ -192,6 +194,10 @@ class DNSForwarder:
                 logger.info(f"Received AAAA type query for {qname}, ignoring")
                 empty_resp = dns.message.make_response(query)
                 transport.sendto(empty_resp.to_wire(), client_addr)
+                return
+            elif qtype == dns.rdatatype.PTR and qname.endswith(".10.in-addr.arpa"):
+                nx_resp = self.make_NXDOMAIN_response(query=query)
+                transport.sendto(nx_resp.to_wire(), client_addr)
                 return
 
             resp = None
@@ -281,6 +287,27 @@ class DNSForwarder:
         if response.rcode() != dns.rcode.NOERROR:
             return
 
+        # ip = None
+        if not response.answer:
+            return
+
+        for rrset in response.answer:
+            if rrset.rdtype == dns.rdatatype.A:
+                ttl = rrset.ttl
+
+        if ttl != -1:
+            # add cache
+            self.cache[(qname, qtype)] = (response, ttl)
+            # logger.debug(f"Cached {qname}: {response}")
+
+    def _add_cache_with_ttl(
+        self, qname: str, qtype: int, response: dns.message.Message, ttl: int = -1
+    ):
+        """Add dns response to cache, trying to set longer ttls"""
+        # check response
+        if response.rcode() != dns.rcode.NOERROR:
+            return
+
         if -1 == ttl:
             ttl = self.cache_ttl
             # ip = None
@@ -310,7 +337,9 @@ class DNSForwarder:
         for upstream in upstreams:
             try:
                 # return value is a tuple, (dns.message, bool)
-                return await dns.asyncquery.udp(query, upstream, timeout=self.timeout)
+                return await dns.asyncquery.udp(
+                    query, upstream, timeout=self.timeout, port=self.upstream_port
+                )
             except asyncio.TimeoutError:
                 logger.warning(f"Timeout from upstream {upstream}, will try next one")
                 continue

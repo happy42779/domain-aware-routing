@@ -74,18 +74,18 @@ def setupRoutingTopology():
     net.start()
 
     # setting dns for hosts
-    h1.cmd(
-        'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
-    )
-    h2.cmd(
-        'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
-    )
-    h3.cmd(
-        'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
-    )
-    h4.cmd(
-        'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
-    )
+    # h1.cmd(
+    #     'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
+    # )
+    # h2.cmd(
+    #     'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
+    # )
+    # h3.cmd(
+    #     'bash -c "echo nameserver 10.0.0.253 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
+    # )
+    # h4.cmd(
+    #     'bash -c "echo nameserver 10.0.0.254 > /tmp/resolv.conf; mount --bind /tmp/resolv.conf /etc/resolv.conf || true"'
+    # )
     # Add router namespace
     info("*** Configuring router\n")
     # Create ISP uplink interfaces
@@ -134,7 +134,17 @@ def setupRoutingTopology():
     # Configure DNS on hosts
     for host in net.hosts:
         if host.name != "dns":
+            host.cmd("rm -f /etc/resolv.conf")
             host.cmd('echo "nameserver 10.0.0.253" > /etc/resolv.conf')
+            # host.cmd("sysctl -w net.ipv4.conf.all.rp_filter=0")
+            # host.cmd("sysctl -w net.ipv4.conf.default.rp_filter=0")
+            # host.cmd("sysctl -w net.core.rmem_max=16777216")
+            # host.cmd("sysctl -w net.core.wmem_max=16777216")
+            # host.cmd("sysctl -w net.core.netdev_max_backlog=5000")
+            # host.cmd('echo "soft nofile 100000"|sudo tee -a /etc/security/limits.conf')
+            # host.cmd('echo "hard nofile 100000"|sudo tee -a /etc/security/limits.conf')
+
+    h4.cmd('echo "nameserver 10.0.0.254" > /etc/resolv.conf')
 
     info("*** Running apps at different hosts\n")
     # starting up controller and the dns policy engine
@@ -145,7 +155,7 @@ def setupRoutingTopology():
     output = router.cmd(
         "/Users/dian/Code/dbr/src/agent/env/bin/python /Users/dian/Code/dbr/src/agent/rest_agent.py > /dev/null 2>&1 & echo $!"
     )
-    info("*** [debug] output: {output}\n")
+    info(f"*** [debug] output: {output}\n")
     agent_pid = int(output.strip().split("\n")[-1])
     info(f"*** Started sdn agent with pid: {agent_pid}\n")
 
@@ -164,6 +174,8 @@ def setupRoutingTopology():
     # Clean up namespaces and interfaces
     router.cmd(f"kill {agent_pid}")
     root.cmd("iptables -t nat -F POSTROUTING")
+    root.cmd("ip link del isp1-router")
+    root.cmd("ip link del isp2-router")
     net.stop()
 
 

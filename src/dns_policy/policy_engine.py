@@ -31,13 +31,17 @@ logger = logging.getLogger(__name__)
 class PolicyEngine:
     def __init__(
         self,
-        listen_addr: str = "127.0.0.1",
-        listen_port: int = 5335,
+        listen_addr: str,
+        listen_port: int,
+        server: str,
+        server_port: int = 53,
         controller_url: str = "http://127.0.0.1:8080",
         policy_service_url: str = "http://0.0.0.0:8054",
     ):
         self.listen_addr = listen_addr
         self.listen_port = listen_port
+        self.upstreams = [server]
+        self.server_port = server_port
 
         # asyncio lock
         # self.controller_lock = None
@@ -57,7 +61,7 @@ class PolicyEngine:
         try:
             self.conf_manager = ConfigManager()
             self.conf_manager.parse_file()
-            self.upstreams = self.conf_manager.get_default_upstreams()
+            # self.upstreams = self.conf_manager.get_default_upstreams()
             # self.trie = DomainTrie(self.upstreams)
 
             # configure forwarder
@@ -65,12 +69,13 @@ class PolicyEngine:
                 listen_addr=self.listen_addr,
                 listen_port=self.listen_port,
                 upstreams=self.upstreams,
+                upstream_port=self.server_port,
             )
 
             # set the callback function when there's a rule policy
             self.forwarder.add_response_cb(self.__on_dns_policy)
             # set the callback to update conflict rules
-            self.forwarder.domain_trie.add_update_cb(self.__on_rule_udpate)
+            self.forwarder.domain_trie.add_update_cb(self.__on_rule_update)
 
             # load static dns records
             self.forwarder.add_static_cache(self.conf_manager.get_static_records())
@@ -112,7 +117,7 @@ class PolicyEngine:
         except Exception as e:
             logger.error(f"Error sendding command to controller: {e}")
 
-    async def __on_rule_udpate(
+    async def __on_rule_update(
         self,
         domain: str,
         old_action: str,
@@ -157,6 +162,10 @@ class PolicyEngine:
                 result = await self.nb_api_client.batch(commands=commands)
 
             if result:
+                # NOTE: forgot to remove cache?
+                # Invalidate the cache
+                if self.policy_service:
+                    self.policy_service._invalidate_cache(domain)
                 logger.debug(f"Rule update result: {result}")
         except Exception as e:
             logger.debug("failed to update rules to keep consistency")
@@ -226,7 +235,7 @@ class PolicyEngine:
 
 
 def main(args):
-    policy_engine = PolicyEngine(args.listen, args.port)
+    policy_engine = PolicyEngine(args.listen, args.port, args.server, args.serverport)
 
     try:
         asyncio.run(policy_engine.start_engine())
@@ -243,7 +252,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="DNS Policy Engine")
     parser.add_argument("--listen", default="127.0.0.1", help="Listen address")
-    parser.add_argument("--port", default=5335, help="Listen port")
+    parser.add_argument("--port", default=5335, type=int, help="Listen port")
+    parser.add_argument("--server", default="8.8.8.8", help="Upstream server")
+    parser.add_argument(
+        "--serverport", default=53, type=int, help="Upstream server port"
+    )
 
     args = parser.parse_args()
 

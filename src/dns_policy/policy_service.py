@@ -42,12 +42,12 @@ class PolicyService:
         """
         return self.forwarder.domain_trie.all_rules_flat()
 
-    async def get_rule(self, domain: str) -> Tuple[str, Dict]:
+    async def get_rule(self, domain: str) -> Dict:
         """
         Lookup the domain in the domain trie for rules,
         and return the rules.
         """
-        return (domain, self.forwarder.domain_trie.lookup(domain)[0])
+        return self.forwarder.domain_trie.lookup(domain)[0]
 
     async def add_rule(self, directive: str, domain: str, value: str = "") -> bool:
         """
@@ -132,7 +132,7 @@ class PolicyService:
         try:
             self.forwarder.domain_trie.purge_trie()
             self.forwarder.build_domain_trie(rules)
-            self.forwarder.domain_trie.pretty_print()
+            # self.forwarder.domain_trie.pretty_print()
             return True
         except Exception as e:
             logger.error(f"Error batch building rules: {e}")
@@ -187,7 +187,7 @@ class PolicyService:
 
         return rule
 
-    async def _invalidate_cache(self, domain: str) -> bool:
+    def _invalidate_cache(self, domain: str) -> bool:
         """
         This function tries to invalidate immediately a cache entry, if it's present
         Ignores the exception for when the entry is not present in the cache, not need to use lock
@@ -211,6 +211,7 @@ class PolicyService:
         Helper function to help check if a domain is valid
         """
         if len(domain) > 253:
+            logger.error(f"{domain} length exceeds 253")
             return False
 
         if domain.startswith("*."):
@@ -220,12 +221,15 @@ class PolicyService:
         labels = domain.split(".")
         for label in labels:
             if not label or len(label) > 63:
+                logger.error(f"{label} is either None, or its length exceeds 63")
                 return False
 
             if not all(c.isalnum() or c == "-" for c in label):
+                logger.error(f"{label} contains invalid char")
                 return False
 
             if label.startswith("-") or label.endswith("-"):
+                logger.error(f"{label} is starting or ending with -")
                 return False
 
         return True
@@ -306,7 +310,7 @@ class PolicyRestHandler:
             logger.debug(
                 f"Request to add domain: {domain}, directive: {directive}, value: {value}"
             )
-            success = self.policy_service.add_rule(directive, domain, value)
+            success = await self.policy_service.add_rule(directive, domain, value)
 
             T2 = time.perf_counter()
 

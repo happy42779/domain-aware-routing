@@ -92,7 +92,8 @@ class DomainTrie:
                 cur = cur.children[label]
 
             cur.rule = rule
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error inserting rule: {e}")
             raise
 
     async def cow_insert(self, domain: str, rule: Dict):

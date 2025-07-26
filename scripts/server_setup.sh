@@ -1,21 +1,29 @@
 #!/bin/bash
 
 # Create a dummy interface
-create_link(){
-        ip link add dummy0 type dummy
-        ip addr add 10.1.0.1/16 dev dummy0
-        ip link set dummy0 up
+create_link() {
+  ip link add dummy0 type dummy
+  ip addr add 10.1.254.1/24 dev dummy0
+  ip link set dummy0 up
 }
 
-delete_link(){
-        ip link delete dummy0
-        iptables -t nat -D PREROUTING -d 10.1.0.0/16 -p tcp --dport 80 -j DNAT --to-destination 10.1.0.1:80
-        sysctl -w net.ipv4.ip_forward=0
+# setup routing
+setup_redir() {
+  iptables -t nat -A PREROUTING -d 10.1.0.0/17 -j DNAT --to-destination 10.1.254.1
+  # iptables -t nat -A OUTPUT -d 10.1.0.0/16 -p tcp --dport 80 -j DNAT --to-destination 10.0.254.1:80
+  sysctl -w net.ipv4.ip_forward=1
+}
+
+delete_link() {
+  ip link delete dummy0
+  iptables -t nat -D PREROUTING -d 10.1.0.0/17 -j DNAT --to-destination 10.1.254.1
+  # iptables -t nat -D OUTPUT -d 10.1.0.0/16 -p tcp --dport 80 -j DNAT --to-destination 10.0.254.1:80
+  sysctl -w net.ipv4.ip_forward=0
 }
 
 # setup server
-start_server(){
-        python3 - <<'EOF' &
+start_server() {
+  python3 - <<'EOF' &
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 class IPHandler(BaseHTTPRequestHandler):
@@ -26,24 +34,18 @@ class IPHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write((client_ip+'\n').encode("utf-8"))
 if __name__ == '__main__':
-        server = HTTPServer(('10.1.0.1', 80), IPHandler)
+        server = HTTPServer(('10.1.254.1', 80), IPHandler)
         server.serve_forever()
 EOF
-        SERVER_PID=$!
-        echo "IP ehco HTTP server started on 127.0.0.1:80 (PID $SERVER_PID)"
+  SERVER_PID=$!
+  echo "IP ehco HTTP server started on 10.1.254.1:80 (PID $SERVER_PID)"
 }
 
-# setup routing
-setup_redir(){
-        iptables -t nat -A PREROUTING -d 10.1.0.0/16 -p tcp --dport 80 -j DNAT --to-destination 10.1.0.1:80
-        sysctl -w net.ipv4.ip_forward=1
-}
-
-cleanup(){
-        echo "Cleaning up..."
-        kill "$SERVER_PID" 2>/dev/null
-        delete_link
-        exit
+cleanup() {
+  echo "Cleaning up..."
+  kill "$SERVER_PID" 2>/dev/null
+  delete_link
+  exit
 }
 
 # setup signal handler
