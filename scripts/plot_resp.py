@@ -116,6 +116,29 @@ def plot_delays(data, means, stds):
     plt.savefig("plots/responsiveness.png", dpi=200)
 
 
+def plot_table_figure(means, stds, output="plots/resp_table"):
+    sizes = sorted(means.keys())
+    rows = []
+    for size in sizes:
+        row = [size]
+        for col in ["overall_delay", "api_delay", "policy_delay", "residual_delay"]:
+            row.append(f"{means[size][col]} ± {stds[size][col]}")
+        rows.append(row)
+
+    header = ["Rule Size", "Overall (ms)", "API (ms)", "Policy (ms)", "Residual (ms)"]
+
+    fig, ax = plt.subplots(figsize=(8, len(rows) * 0.6 + 1))
+    ax.axis("off")
+    table = ax.table(cellText=rows, colLabels=header, loc="center", cellLoc="center")
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1.2, 1.4)
+    plt.title("Responsiveness Table (mean ± std, outliers removed)", pad=14)
+    plt.tight_layout()
+    plt.savefig(output, dpi=200)
+    # plt.show()
+
+
 def print_table(means, stds):
     # Build a DataFrame for pretty printing
     sizes = sorted(means.keys())
@@ -140,11 +163,14 @@ def print_table(means, stds):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Plot delays from multi-section file.")
+    parser = argparse.ArgumentParser(
+        description="Plot responsiveness from multi-section file."
+    )
     parser.add_argument("file", help="Input file")
     args = parser.parse_args()
     data = parse_file(args.file)
     # print(data[2000])
     means, stds = summary_stats(data)
     plot_delays(data, means, stds)
-    print_table(means, stds)
+    # print_table(means, stds)
+    plot_table_figure(means, stds)

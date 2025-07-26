@@ -134,7 +134,6 @@ def setupRoutingTopology():
     # Configure DNS on hosts
     for host in net.hosts:
         if host.name != "dns":
-            host.cmd("rm -f /etc/resolv.conf")
             host.cmd('echo "nameserver 10.0.0.253" > /etc/resolv.conf')
             # host.cmd("sysctl -w net.ipv4.conf.all.rp_filter=0")
             # host.cmd("sysctl -w net.ipv4.conf.default.rp_filter=0")
@@ -143,8 +142,6 @@ def setupRoutingTopology():
             # host.cmd("sysctl -w net.core.netdev_max_backlog=5000")
             # host.cmd('echo "soft nofile 100000"|sudo tee -a /etc/security/limits.conf')
             # host.cmd('echo "hard nofile 100000"|sudo tee -a /etc/security/limits.conf')
-
-    h4.cmd('echo "nameserver 10.0.0.254" > /etc/resolv.conf')
 
     info("*** Running apps at different hosts\n")
     # starting up controller and the dns policy engine

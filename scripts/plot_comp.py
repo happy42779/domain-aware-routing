@@ -101,7 +101,7 @@ def plot(data1, data2, output):
     table.auto_set_font_size(False)
     table.set_fontsize(12)
     table.scale(1, 1.4)
-    plt.title("Summary Table (mean ± std, ms, outliers removed)", pad=14)
+    plt.title("Latency Table (mean ± std, ms, outliers removed)", pad=14)
     plt.tight_layout()
     plt.savefig("plots/latency_table.png", dpi=200)
 
